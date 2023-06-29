@@ -1,4 +1,4 @@
-<?php 
+<?php
 // Include the database connection file
 require_once '../../database/db_connect.php';
 // error_reporting(0);
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || empty($password)) {
         // Return a bad request error response indicating missing fields
         http_response_code(400);
-        echo json_encode(['status' => 400, 'error' => 'Missing fields']);
+        echo json_encode(['status' => 400, 'error' => 'Missing fields', 'timestamp' => date('c')]);
         exit;
     }
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         // Return an error response if the email is not in the correct format
         http_response_code(400);
-        echo json_encode(['status' => 400, 'error' => 'Invalid email format']);
+        echo json_encode(['status' => 400, 'error' => 'Invalid email format', 'timestamp' => date('c')]);
         exit;
     }
 
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($stmt->num_rows === 0) {
         // Return an error response if the email does not exist
         http_response_code(404);
-        echo json_encode(['status' => 404, 'error' => 'Email not found']);
+        echo json_encode(['status' => 404, 'error' => 'Email not found', 'timestamp' => date('c')]);
         exit;
     }
 
@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!password_verify($password, $hashedPassword)) {
         // Return an error response if the password is incorrect
         http_response_code(401);
-        echo json_encode(['status' => 401, 'error' => 'Invalid password']);
+        echo json_encode(['status' => 401, 'error' => 'Invalid password', 'timestamp' => date('c')]);
         exit;
     }
 
@@ -112,23 +112,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $refreshToken = generateRefreshToken($userId);
 
     // Store the refresh token in the database
+    $refreshTokenValue = $refreshToken;
+    $userIdValue = $userId;
     $refreshTokenStmt = $conn->prepare("UPDATE users SET refresh_token = ? WHERE id = ?");
-    $refreshTokenStmt->bind_param("si", $refreshToken, $userId);
+    $refreshTokenStmt->bind_param("ss", $refreshTokenValue, $userIdValue);
     $refreshTokenStmt->execute();
 
     // Return a success response with the access token and refresh token
+    $response = [
+        'status' => 200,
+        'data' => [
+            'email' => $email,
+            'tokens' => [
+                'accessToken' => $accessToken,
+                'refreshToken' => $refreshToken
+            ]
+        ],
+        'timestamp' => date('c')
+    ];
+
     http_response_code(200);
-    echo json_encode(['status' => 200, 'data' => ['email' => $email, 'tokens' => ['accessToken' => $accessToken, 'refreshToken' => $refreshToken]]]);
+    echo json_encode($response);
 
     // Close the statements
     $stmt->close();
     $refreshTokenStmt->close();
 } else {
     http_response_code(405);
-    echo json_encode(['status' => 405, 'error' => 'Invalid Method']);
+    echo json_encode(['status' => 405, 'error' => 'Invalid Method', 'timestamp' => date('c')]);
 }
 
 // Close the database connection
 $conn->close();
-
 ?>
